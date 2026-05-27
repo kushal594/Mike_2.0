@@ -62,21 +62,20 @@ app.all("/mcp", async (req, res) => {
     if (sessionId && sessions[sessionId]) {
       session = sessions[sessionId];
     } else {
+      const server = createServer();
+      const sessionObj: { transport: StreamableHTTPServerTransport; server: ReturnType<typeof createServer> } = {} as any;
+
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => {
+          sessions[sid] = sessionObj;
+        },
       });
 
-      const server = createServer();
       await server.connect(transport);
-
-      session = {
-        transport,
-        server,
-      };
-
-      if (transport.sessionId) {
-        sessions[transport.sessionId] = session;
-      }
+      sessionObj.transport = transport;
+      sessionObj.server = server;
+      session = sessionObj;
 
       transport.onclose = async () => {
         if (transport.sessionId) {
