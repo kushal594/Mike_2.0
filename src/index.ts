@@ -19,7 +19,7 @@ You are the only interface the exec uses to build and maintain this system.
 
 function createServer() {
   const server = new McpServer({
-    name: "Mike_2.0",
+    name: "Mike.H_2.0",
     version: "1.0.0",
     description,
   });
@@ -45,7 +45,7 @@ const sessions: Record<
 app.get("/", (_req, res) => {
   res.json({
     ok: true,
-    service: "Mike_2.0",
+    service: "Mike.H_2.0",
     endpoint: "/mcp",
   });
 });
@@ -57,9 +57,9 @@ app.get("/health", (_req, res) => {
 app.all("/mcp", async (req, res) => {
   try {
     const sessionId = req.header("mcp-session-id");
-    let session;
 
     if (sessionId && sessions[sessionId]) {
+<<<<<<< HEAD
       session = sessions[sessionId];
     } else {
       const server = createServer();
@@ -82,9 +82,31 @@ app.all("/mcp", async (req, res) => {
           delete sessions[transport.sessionId];
         }
       };
+=======
+      await sessions[sessionId].transport.handleRequest(req, res, req.body);
+      return;
+>>>>>>> 952d53697a2fdaf22c21e4be8ae78affab9818a4
     }
 
-    await session.transport.handleRequest(req, res, req.body);
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+    });
+
+    const server = createServer();
+    await server.connect(transport);
+
+    transport.onclose = async () => {
+      if (transport.sessionId) {
+        delete sessions[transport.sessionId];
+      }
+    };
+
+    await transport.handleRequest(req, res, req.body);
+
+    // sessionId is only assigned by the SDK after handleRequest processes initialize
+    if (transport.sessionId) {
+      sessions[transport.sessionId] = { transport, server };
+    }
   } catch (error) {
     console.error("MCP HTTP error:", error);
 
@@ -101,53 +123,14 @@ app.all("/mcp", async (req, res) => {
   }
 });
 
-// app.all("/mcp", async (req, res) => {
-//   try {
-//     const sessionId = req.header("mcp-session-id");
-//     let transport: StreamableHTTPServerTransport;
-
-//     if (sessionId && transports[sessionId]) {
-//       transport = transports[sessionId];
-//     } else {
-//       transport = new StreamableHTTPServerTransport({
-//         sessionIdGenerator: () => randomUUID(),
-//       });
-
-//       const server = createServer();
-//       await server.connect(transport);
-
-//       if (transport.sessionId) {
-//         transports[transport.sessionId] = transport;
-//       }
-
-//       transport.onclose = async () => {
-//         if (transport.sessionId) {
-//           delete transports[transport.sessionId];
-//         }
-//       };
-//     }
-
-//     await transport.handleRequest(req, res, req.body);
-//   } catch (error) {
-//     // console.error("MCP HTTP error:", error);
-
-//     if (!res.headersSent) {
-//       res.status(500).json({
-//         jsonrpc: "2.0",
-//         error: {
-//           code: -32603,
-//           message: "Internal server error",
-//         },
-//         id: null,
-//       });
-//     }
-//   }
-// });
-
 const port = Number(process.env.PORT || 3000);
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Mike_2.0 listening on port ${port}`);
+  console.log(`Mike.H_2.0 listening on port ${port}`);
 });
+
+
+
+// Local Code for testing MCP server with Stdio transport
 
 // import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 // import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
